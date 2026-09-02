@@ -1,0 +1,230 @@
+// KK4 Doc Record - Prisma schema
+// อ้างอิงจาก docs/skills/02-data-model.md — อ่านไฟล์นั้นก่อนแก้ schema นี้
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== MASTER DATA =====================
+
+model ProjectMaster {
+  projectCode       String  @id @map("project_code")
+  conzolProjectCode String  @map("conzol_project_code")
+  title             String
+  plant             String
+  phase             String
+  projectType       String  @map("project_type")
+  active            Boolean @default(true)
+
+  documents DocumentRegister[]
+
+  @@map("project_master")
+}
+
+model DisciplineMaster {
+  disciplineCode String  @id @map("discipline_code")
+  disciplineName String  @map("discipline_name")
+  active         Boolean @default(true)
+
+  groups DocumentGroupMaster[]
+
+  @@map("discipline_master")
+}
+
+model DocumentGroupMaster {
+  groupCode      String  @id @map("group_code")
+  groupName      String  @map("group_name")
+  disciplineCode String  @map("discipline_code")
+  active         Boolean @default(true)
+
+  discipline DisciplineMaster    @relation(fields: [disciplineCode], references: [disciplineCode])
+  typeLinks  GroupTypeMapping[]
+  documents  DocumentRegister[]
+
+  @@map("document_group_master")
+}
+
+model DocumentTypeMaster {
+  typeCode        String  @id @map("type_code")
+  typeDescription String  @map("type_description")
+  active          Boolean @default(true)
+
+  groupLinks GroupTypeMapping[]
+  documents  DocumentRegister[]
+
+  @@map("document_type_master")
+}
+
+// many-to-many: Group ไหนใช้ Type อะไรได้บ้าง
+model GroupTypeMapping {
+  groupCode String @map("group_code")
+  typeCode  String @map("type_code")
+
+  group DocumentGroupMaster @relation(fields: [groupCode], references: [groupCode])
+  type  DocumentTypeMaster  @relation(fields: [typeCode], references: [typeCode])
+
+  @@id([groupCode, typeCode])
+  @@map("group_type_mapping")
+}
+
+model OriginatorMaster {
+  originatorCode String  @id @map("originator_code")
+  originatorName String  @map("originator_name")
+  active         Boolean @default(true)
+
+  documents DocumentRegister[]
+
+  @@map("originator_master")
+}
+
+model StatusMaster {
+  statusCode String  @id @map("status_code")
+  statusName String  @map("status_name")
+  active     Boolean @default(true)
+
+  documents DocumentRegister[]
+
+  @@map("status_master")
+}
+
+model RevisionMaster {
+  revisionCode        String  @id @map("revision_code")
+  revisionDescription String  @map("revision_description")
+  active               Boolean @default(true)
+
+  documentsAtCurrentRev DocumentRegister[]
+  submissions           DocumentSubmission[]
+
+  @@map("revision_master")
+}
+
+model ReturnCodeMaster {
+  returnCode        String  @id @map("return_code")
+  returnDescription String  @map("return_description")
+  active            Boolean @default(true)
+
+  submissions DocumentSubmission[]
+
+  @@map("return_code_master")
+}
+
+model PurposeOfIssueMaster {
+  purposeCode        String  @id @map("purpose_code")
+  purposeDescription String  @map("purpose_description")
+  active             Boolean @default(true)
+
+  submissions DocumentSubmission[]
+
+  @@map("purpose_of_issue_master")
+}
+
+// ===================== TRANSACTION TABLES =====================
+
+model DocumentRegister {
+  documentId      String   @id @default(uuid()) @map("document_id")
+  documentNo      String   @unique @map("document_no")
+  projectCode     String   @map("project_code")
+  title           String
+  originatorCode  String   @map("originator_code")
+  groupCode       String   @map("group_code")
+  typeCode        String   @map("type_code")
+  currentRevision String   @map("current_revision")
+  currentStatus   String   @map("current_status")
+  planDate        DateTime? @map("plan_date")
+  remarks         String?
+  erpSynced       Boolean   @default(false) @map("erp_synced")
+  erpSyncedAt     DateTime? @map("erp_synced_at")
+  erpSyncedBy     String?   @map("erp_synced_by")
+  erpDocId        String?   @map("erp_doc_id")
+  createdBy       String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedBy       String?  @map("updated_by")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  project    ProjectMaster       @relation(fields: [projectCode], references: [projectCode])
+  originator OriginatorMaster    @relation(fields: [originatorCode], references: [originatorCode])
+  group      DocumentGroupMaster @relation(fields: [groupCode], references: [groupCode])
+  type       DocumentTypeMaster  @relation(fields: [typeCode], references: [typeCode])
+  revision   RevisionMaster      @relation(fields: [currentRevision], references: [revisionCode])
+  status     StatusMaster        @relation(fields: [currentStatus], references: [statusCode])
+
+  submissions DocumentSubmission[]
+
+  @@index([projectCode])
+  @@index([groupCode])
+  @@index([currentStatus])
+  @@index([erpSynced])
+  @@map("document_register")
+}
+
+// 1 แถวต่อ 1 revision/transmittal — แทนคอลัมน์แนวนอน 132 คอลัมน์ในไฟล์ Excel เดิม
+model DocumentSubmission {
+  submissionId  String    @id @default(uuid()) @map("submission_id")
+  documentId    String    @map("document_id")
+  revision      String
+  submittedDate DateTime  @map("submitted_date")
+  purposeCode   String    @map("purpose_code")
+  submittedBy   String    @map("submitted_by")
+  receivedBy    String?   @map("received_by")
+  returnCode    String?   @map("return_code")
+  attachmentUrl String?   @map("attachment_url")
+  erpSynced     Boolean   @default(false) @map("erp_synced")
+  erpSyncedAt   DateTime? @map("erp_synced_at")
+  erpSyncedBy   String?   @map("erp_synced_by")
+  erpDocId      String?   @map("erp_doc_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  document       DocumentRegister      @relation(fields: [documentId], references: [documentId])
+  revisionRef    RevisionMaster        @relation(fields: [revision], references: [revisionCode])
+  purpose        PurposeOfIssueMaster  @relation(fields: [purposeCode], references: [purposeCode])
+  returnCodeRef  ReturnCodeMaster?     @relation(fields: [returnCode], references: [returnCode])
+
+  @@index([documentId])
+  @@map("document_submission")
+}
+
+// ตารางคุม auto-numbering แบบ atomic — ดู docs/skills/03-numbering-concurrency.md
+model DocumentNumberSequence {
+  sequenceKey   String @id @map("sequence_key")
+  lastSequence  Int    @default(0) @map("last_sequence")
+
+  @@map("document_number_sequence")
+}
+
+// แทน Distribution Matrix เดิม (Excel 60 คน x 170+ กลุ่ม)
+model RoleAssignmentMatrix {
+  id        String @id @default(uuid())
+  userId    String @map("user_id")
+  groupCode String @map("group_code")
+  role      Role
+
+  @@unique([userId, groupCode, role])
+  @@map("role_assignment_matrix")
+}
+
+enum Role {
+  CREATOR
+  REVIEWER
+  CONSOLIDATOR
+  APPROVER
+  CC
+}
+
+// ===================== AUTH (พื้นฐาน — ต่อ Azure AD ทีหลัง) =====================
+
+model AppUser {
+  userId         String   @id @default(uuid()) @map("user_id")
+  email          String   @unique
+  displayName    String   @map("display_name")
+  passwordHash   String   @map("password_hash")
+  disciplineCode String?  @map("discipline_code")
+  isAdmin        Boolean  @default(false) @map("is_admin")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("app_user")
+}

@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-02T01:00:00Z",
+  "title": "Design System: KK4 Document Register",
+  "extensions": {
+    "colorMeta": {
+      "scg-red": { "role": "brand", "displayName": "SCG Red", "canonical": "#C8102E", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#fda4af", "#fecdd3"] },
+      "action-blue": { "role": "secondary", "displayName": "Action Blue", "canonical": "#3F5E7C", "tonalRamp": ["#1A2836", "#324B63", "#3F5E7C", "#5B7796", "#7C93AE", "#8AA4BB", "#B0C2D2", "#EEF2F5"] },
+      "positive-emerald": { "role": "primary", "displayName": "Positive Emerald", "canonical": "#2A5E38", "tonalRamp": ["#102915", "#1F4A2C", "#2A5E38", "#3D7548", "#5C8F62", "#85AC88", "#B2CAB3", "#EEF3EE"] },
+      "warning-amber": { "role": "status", "displayName": "Warning Amber", "canonical": "#B98C2E", "tonalRamp": ["#4A3510", "#7A5A19", "#9C7422", "#B98C2E", "#CBA246", "#DDBB6A", "#E8CE8E", "#FBF4E7"] },
+      "destructive-rose": { "role": "status", "displayName": "Destructive Rose", "canonical": "#B23B31", "tonalRamp": ["#38100C", "#6E1F19", "#8F2C24", "#B23B31", "#B85A4F", "#C97970", "#D99A93", "#F7E9E7"] },
+      "info-cyan": { "role": "status", "displayName": "Info Cyan", "canonical": "#4A7A82", "tonalRamp": ["#182A2D", "#2E4D53", "#3B626A", "#4A7A82", "#649599", "#7FACB1", "#A9C7CB", "#EBF1F1"] },
+      "surface-paper": { "role": "neutral", "displayName": "Surface Paper", "canonical": "#f1f5f9", "tonalRamp": ["#0b0f19", "#172033", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f8fafc"] },
+      "overlay-surface": { "role": "neutral", "displayName": "Overlay Surface", "canonical": "#0f172a", "tonalRamp": ["#0b0f19", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Default UI and grid prose text." },
+      "label": { "displayName": "Label", "purpose": "Grid column headers and section labels; uppercase, tracked." },
+      "data-mono": { "displayName": "Data Mono", "purpose": "Literal record values only: document numbers, dates, project codes, row numbers." }
+    },
+    "shadows": [
+      { "name": "chrome", "value": "0 1px 2px rgba(15,23,42,0.05)", "purpose": "Header bar, active tab, small status pills — a hair of lift, never a real drop shadow." },
+      { "name": "overlay", "value": "0 25px 50px -12px rgba(0,0,0,0.5)", "purpose": "Modal container only, paired with a blurred black/75 scrim behind it." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The app's true primary action (e.g. Save Row & Auto Issue) — emerald, not blue.",
+      "html": "<button class=\"ds-btn-primary\">Save Row &amp; Auto Issue 4-Digit No.</button>",
+      "css": ".ds-btn-primary { background: #2A5E38; color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: Inter, sans-serif; border: none; box-shadow: 0 1px 2px rgba(15,23,42,0.05); transition: background 0.15s, transform 0.1s; } .ds-btn-primary:hover { background: #17391F; } .ds-btn-primary:active { transform: scale(0.95); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #5B7796; }"
+    },
+    {
+      "name": "Secondary Action Button",
+      "kind": "button",
+      "refersTo": "button-secondary-action",
+      "description": "Lower-emphasis default action, used for buttons inside the dark task-surface modals.",
+      "html": "<button class=\"ds-btn-secondary-action\">View Details</button>",
+      "css": ".ds-btn-secondary-action { background: #3F5E7C; color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; font-family: Inter, sans-serif; border: none; box-shadow: 0 1px 2px rgba(15,23,42,0.05); transition: background 0.15s; } .ds-btn-secondary-action:hover { background: #324B63; } .ds-btn-secondary-action:focus-visible { outline: none; box-shadow: 0 0 0 2px #5B7796; }"
+    },
+    {
+      "name": "Brand Button",
+      "kind": "button",
+      "refersTo": "button-brand",
+      "description": "The one brand-flagged control; SCG red, reserved use only.",
+      "html": "<button class=\"ds-btn-brand\">Sync to ConZoL</button>",
+      "css": ".ds-btn-brand { background: #C8102E; color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; font-family: Inter, sans-serif; border: none; box-shadow: 0 1px 2px rgba(15,23,42,0.05); transition: background 0.15s, transform 0.1s; } .ds-btn-brand:hover { background: #9E0A24; } .ds-btn-brand:active { transform: scale(0.95); } .ds-btn-brand:focus-visible { outline: none; box-shadow: 0 0 0 2px #5B7796; }"
+    },
+    {
+      "name": "Success Badge",
+      "kind": "chip",
+      "refersTo": "badge-success",
+      "description": "Soft-tint status badge for approved/uploaded states.",
+      "html": "<span class=\"ds-badge-success\">APPROVED</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; background: #D7E4D8; color: #17391F; border: 1px solid #B2CAB3; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700; font-family: Inter, sans-serif; }"
+    },
+    {
+      "name": "Warning Badge",
+      "kind": "chip",
+      "refersTo": "badge-warning",
+      "description": "Soft-tint status badge for pending/needs-attention states.",
+      "html": "<span class=\"ds-badge-warning\">Pending ConZoL</span>",
+      "css": ".ds-badge-warning { display: inline-flex; align-items: center; background: #E8CE8E; color: #4A3510; border: 1px solid #DDBB6A; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700; font-family: Inter, sans-serif; }"
+    },
+    {
+      "name": "Sheet Tab (active)",
+      "kind": "nav",
+      "refersTo": "sheet-tab-active",
+      "description": "Active Google-Sheets-style bottom tab: top-rounded, emerald underline, white fill.",
+      "html": "<button class=\"ds-tab-active\">All Sheets (128)</button>",
+      "css": ".ds-tab-active { background: #ffffff; color: #17391F; border: none; border-bottom: 2px solid #2A5E38; border-radius: 5px 5px 0 0; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: Inter, sans-serif; box-shadow: 0 1px 2px rgba(15,23,42,0.05); }"
+    },
+    {
+      "name": "Modal Header",
+      "kind": "custom",
+      "refersTo": "modal-header",
+      "description": "Header band of the dark task-surface modal: title, description, close.",
+      "html": "<div class=\"ds-modal-header\"><div><h2 class=\"ds-modal-title\">Submit Revision</h2><p class=\"ds-modal-desc\">CM24045-EPS-ME06-FD-0001</p></div></div>",
+      "css": ".ds-modal-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding: 16px 24px; background: rgba(30,41,59,0.5); } .ds-modal-title { color: #f1f5f9; font-size: 18px; font-weight: 600; font-family: Inter, sans-serif; margin: 0; } .ds-modal-desc { color: #94a3b8; font-size: 12px; font-family: Inter, sans-serif; margin: 2px 0 0; }"
+    },
+    {
+      "name": "Dark Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Text input as used inside the dark task-surface modals.",
+      "html": "<input class=\"ds-input\" placeholder=\"Document title\" />",
+      "css": ".ds-input { width: 100%; height: 36px; background: rgba(15,23,42,0.9); color: #f1f5f9; border: 1px solid #334155; border-radius: 5px; padding: 4px 12px; font-size: 13px; font-family: Inter, sans-serif; transition: border-color 0.15s; } .ds-input::placeholder { color: #64748b; } .ds-input:focus-visible { outline: none; border-color: transparent; box-shadow: 0 0 0 2px #5B7796; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Site Office Ledger",
+    "overview": "This is a working ledger, not a showcase — an EPC document controller's desk in software form. Density and legibility win over decoration; every pixel earns its place because the person using this screen is scanning hundreds of rows a day, not admiring it. The system runs on two surfaces with different jobs: a light, Excel-familiar data surface (the register grid and its chrome) where users scan and compare, and a dark, elevated task surface (modals for creating, editing, and reviewing a single document) where users focus on one record without the grid competing for attention. Both surfaces share the same accent vocabulary so the split reads as \"different mode,\" never \"different app.\" Color is functional, not decorative: emerald means \"this is the live, in-progress, or committed action\" — the active tab, the open Smart Register panel, and its primary Save button, the single highest-frequency action in the app — blue means \"a default, lower-emphasis action\" used inside modals, amber means \"this needs attention,\" rose/red means \"this is rejected or destructive,\" and SCG red is reserved for the brand mark alone. Every one of those accents is a deliberately custom, muted, ink-and-ledger scale — rubber-stamp red, drafting-table blue, aged mustard, forest-ledger green — overriding Tailwind's stock hues so the app doesn't read as generic AI-tool output; corners are tightened to a crisper, more instrument-like radius scale for the same reason.",
+    "keyCharacteristics": [
+      "Two deliberate surfaces: light data-grid, dark task-overlay — sharing one accent system.",
+      "Functional color, not brand color, drives interaction: SCG red marks the brand only.",
+      "Flat by default; borders and surface-tone shifts do the separating, shadow is reserved for things that truly float (modals, the active tab).",
+      "Precise and procedural: compact type, tight rhythm, snappy feedback — built for all-day repeated use, not first impressions."
+    ],
+    "rules": [
+      { "name": "The One-Job Rule", "body": "Every accent color has exactly one meaning system-wide. Blue never means \"success,\" emerald never means \"click here to submit,\" amber never means \"informational.\" If a new state needs color, give it a new role rather than reusing one.", "section": "colors" },
+      { "name": "The Brand-Restraint Rule", "body": "SCG red appears only as the brand mark and its one dedicated button variant. It is never the default action color — that keeps the brand legible as a signature, not wallpaper.", "section": "colors" },
+      { "name": "The Data-Is-Mono Rule", "body": "Any value that is a literal fact from the register (a document number, a date, a project code) renders in JetBrains Mono. Prose, labels, and UI chrome never do.", "section": "typography" },
+      { "name": "The Flat-Data, Floating-Task Rule", "body": "The register grid never floats — it's the ground the user stands on. Only task-focused overlays (modals) are allowed real elevation.", "section": "elevation" },
+      { "name": "The No-Stock-Hue Rule", "body": "Never let emerald-*, blue-*, amber-*, rose-*, or cyan-* fall back to Tailwind's default values. Those exact hexes are the single most recognizable tell of unmodified AI-tool output; this system's identity depends on the overrides in tailwind.config.js staying in place.", "section": "colors" }
+    ],
+    "dos": [
+      "Do keep grid cells square (no radius) — the Excel mental model depends on it.",
+      "Do reserve SCG Red for the brand mark and its one button variant only.",
+      "Do render document numbers, dates, and project codes in JetBrains Mono; everything else in Inter.",
+      "Do use soft-tint badges (never solid fill) for status, so a row with multiple badges stays readable.",
+      "Do keep the dark task-surface (modals) visually distinct from the light data-surface (grid) — it's a deliberate two-surface system, not an inconsistency to fix."
+    ],
+    "donts": [
+      "Don't use emerald for a \"click here\" action — it means success/active, not \"do this.\"",
+      "Don't add drop shadows to the grid, header, or tab bar at rest; shadow is reserved for the modal overlay and the active tab only.",
+      "Don't round the register grid's cells or table borders.",
+      "Don't mix a light-surface component (grid-styled button/badge) into a modal, or a dark-surface component into the grid — each surface uses its own component styling.",
+      "Don't reach for Tailwind's stock color values or the default 8-12px corner scale as a quick fix — that's the generic-AI-tool look this system was deliberately built to avoid."
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kk4_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kk4_user
+      POSTGRES_PASSWORD: kk4_password
+      POSTGRES_DB: kk4_doc_record
+    ports:
+      - "5432:5432"
+    volumes:
+      - kk4_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kk4_user -d kk4_doc_record"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kk4_backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://kk4_user:kk4_password@postgres:5432/kk4_doc_record?schema=public
+      JWT_SECRET: supersecret_kk4_jwt_key_2026
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kk4_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  kk4_postgres_data:
