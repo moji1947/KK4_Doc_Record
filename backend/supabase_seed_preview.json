@@ -1,0 +1,106 @@
+{
+  "totalDocs": 176,
+  "totalSubs": 176,
+  "sample": [
+    {
+      "documentNo": "CM24045-EPS-PJ01-INV-0001",
+      "title": "Project study report",
+      "groupCode": "PJ01",
+      "typeCode": "INV",
+      "disciplineCode": "PJ",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-PJ02-INV-0001",
+      "title": "Budget approval document",
+      "groupCode": "PJ02",
+      "typeCode": "INV",
+      "disciplineCode": "PJ",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-PJ14-CR-0001",
+      "title": "Change Order-Add Recirculate system",
+      "groupCode": "PJ14",
+      "typeCode": "CR",
+      "disciplineCode": "PJ",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-PJ14-CR-0002",
+      "title": "Change Order-Change Material of silo",
+      "groupCode": "PJ14",
+      "typeCode": "CR",
+      "disciplineCode": "PJ",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME02-GA-0001",
+      "title": "GENERAL ARRANGEMENT AND LOAD DATA",
+      "groupCode": "ME02",
+      "typeCode": "GA",
+      "disciplineCode": "ME",
+      "currentRevision": "02",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME03-FS-0001",
+      "title": "Flow sheet",
+      "groupCode": "ME03",
+      "typeCode": "FS",
+      "disciplineCode": "ME",
+      "currentRevision": "01",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME04-LD-0001",
+      "title": "Load data",
+      "groupCode": "ME04",
+      "typeCode": "LD",
+      "disciplineCode": "ME",
+      "currentRevision": "01",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME06-FD-0001",
+      "title": "CHUTE CH01, CH02, CH03",
+      "groupCode": "ME06",
+      "typeCode": "FD",
+      "disciplineCode": "ME",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME06-FD-0002",
+      "title": "Dedusting (DE01)",
+      "groupCode": "ME06",
+      "typeCode": "FD",
+      "disciplineCode": "ME",
+      "currentRevision": "00",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    },
+    {
+      "documentNo": "CM24045-EPS-ME06-FD-0003",
+      "title": "Air Duct from Roots blower (RB01) to Rotary",
+      "groupCode": "ME06",
+      "typeCode": "FD",
+      "disciplineCode": "ME",
+      "currentRevision": "01",
+      "currentStatus": "APPROVED",
+      "erpSynced": true
+    }
+  ]
+}
