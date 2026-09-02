@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import mockDocuments from "./mockDocuments.json";
 
-const STORAGE_KEY = "kk4_local_documents_data_v1";
+const STORAGE_KEY = "kk4_scg_document_register_v2";
 
 export interface DocumentSubmission {
   submissionId: string;
@@ -116,8 +116,8 @@ export interface SubmitRevisionPayload {
   erpSynced?: boolean;
 }
 
-// Local Storage Helper
-function getStoredDocuments(): DocumentRecord[] {
+// Local Storage Helper with Full Persistence
+export function getStoredDocuments(): DocumentRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -129,16 +129,17 @@ function getStoredDocuments(): DocumentRecord[] {
   } catch (e) {
     console.warn("Failed to read local documents:", e);
   }
-  // Initialize with mockDocuments
+
+  // Initialize once with mockDocuments
   const initial = (mockDocuments as DocumentRecord[]).map((d) => ({
     ...d,
-    erpSynced: d.erpSynced ?? false,
+    erpSynced: d.erpSynced ?? true,
   }));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
   return initial;
 }
 
-function saveStoredDocuments(docs: DocumentRecord[]) {
+export function saveStoredDocuments(docs: DocumentRecord[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
   } catch (e) {
@@ -319,7 +320,6 @@ export function useCreateDocument() {
       docs.unshift(newDoc);
       saveStoredDocuments(docs);
 
-      // Best effort API sync
       try {
         await apiClient<DocumentRecord>("/api/v1/documents", {
           method: "POST",
@@ -391,7 +391,6 @@ export function useSyncErp() {
       erpSynced: boolean;
       receiver?: string;
     }) => {
-      // 1. Immediately update in local storage
       const docs = getStoredDocuments();
       const doc = docs.find((d) => d.documentId === documentId);
       if (doc) {
@@ -401,14 +400,13 @@ export function useSyncErp() {
         saveStoredDocuments(docs);
       }
 
-      // 2. Best-effort API call
       try {
         await apiClient<DocumentRecord>(`/api/v1/documents/${documentId}/erp-sync`, {
           method: "POST",
           body: JSON.stringify({ erpSynced, receiver }),
         });
       } catch {
-        // offline mode supported
+        // saved in local storage
       }
 
       return doc;
@@ -448,7 +446,7 @@ export function useBatchSyncErp() {
           body: JSON.stringify({ documentIds, erpSynced, receiver }),
         });
       } catch {
-        // offline mode supported
+        // saved in local storage
       }
 
       return { count: documentIds.length, erpSynced };

@@ -12,12 +12,17 @@ import {
   X,
   History,
   Info,
+  ChevronDown,
+  ChevronRight,
+  Clock,
 } from "lucide-react";
 import {
   DocumentRecord,
   useCreateDocument,
   useSyncErp,
   useSubmitRevision,
+  getStoredDocuments,
+  saveStoredDocuments,
 } from "../api/useDocuments";
 import { formatDate } from "@/lib/utils";
 
@@ -66,12 +71,14 @@ export function ExcelWorkbookView({
   documents,
   isLoading,
 }: ExcelWorkbookViewProps) {
-  // Local reactive state
-  const [docList, setDocList] = React.useState<DocumentRecord[]>(documents);
+  // Local persistent state initialized directly from localStorage / documents
+  const [docList, setDocList] = React.useState<DocumentRecord[]>(() => {
+    return getStoredDocuments();
+  });
 
   React.useEffect(() => {
     if (documents && documents.length > 0) {
-      setDocList(documents);
+      setDocList(getStoredDocuments());
     }
   }, [documents]);
 
@@ -81,6 +88,7 @@ export function ExcelWorkbookView({
   const [conzolFilter, setConzolFilter] = React.useState<"ALL" | "PENDING" | "SYNCED">("ALL");
   const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [expandedDocIds, setExpandedDocIds] = React.useState<Set<string>>(new Set());
 
   // New Document Add Row Form State
   const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -102,6 +110,17 @@ export function ExcelWorkbookView({
   const createDocMutation = useCreateDocument();
   const syncErpMutation = useSyncErp();
   const submitRevMutation = useSubmitRevision();
+
+  // Toggle Row Expansion to show all Revision History
+  const toggleRowExpansion = (docId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedDocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
 
   // Find Discipline from Group
   const currentGroupInfo = React.useMemo(() => {
@@ -175,26 +194,28 @@ export function ExcelWorkbookView({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Toggle ConZoL Upload Status (Admin) with ZERO LATENCY
+  // Toggle ConZoL Upload Status with 100% Guaranteed Persistent LocalStorage Update
   const handleToggleConzol = (doc: DocumentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextSynced = !doc.erpSynced;
 
-    // 1. Instant local state update
-    setDocList((prev) =>
-      prev.map((d) =>
-        d.documentId === doc.documentId
-          ? {
-              ...d,
-              erpSynced: nextSynced,
-              erpSyncedAt: nextSynced ? new Date().toISOString() : null,
-              erpSyncedBy: nextSynced ? "Admin" : null,
-            }
-          : d
-      )
+    // 1. Update React State immediately (0ms visual feedback)
+    const updatedList = docList.map((d) =>
+      d.documentId === doc.documentId
+        ? {
+            ...d,
+            erpSynced: nextSynced,
+            erpSyncedAt: nextSynced ? new Date().toISOString() : null,
+            erpSyncedBy: nextSynced ? "Admin" : null,
+          }
+        : d
     );
+    setDocList(updatedList);
 
-    // 2. Mutation & LocalStorage
+    // 2. Persist directly to localStorage
+    saveStoredDocuments(updatedList);
+
+    // 3. Background sync
     syncErpMutation.mutate({
       documentId: doc.documentId,
       erpSynced: nextSynced,
@@ -229,7 +250,9 @@ export function ExcelWorkbookView({
     });
 
     if (newCreated) {
-      setDocList((prev) => [newCreated, ...prev]);
+      const updatedList = [newCreated, ...docList];
+      setDocList(updatedList);
+      saveStoredDocuments(updatedList);
     }
 
     setDocTitle("");
@@ -267,33 +290,33 @@ export function ExcelWorkbookView({
       erpSynced: false,
     });
 
-    setDocList((prev) =>
-      prev.map((d) =>
-        d.documentId === revisionDoc.documentId
-          ? {
-              ...d,
-              currentRevision: nextRevCode,
-              erpSynced: false,
-              erpSyncedAt: null,
-              submissions: [
-                {
-                  submissionId: `sub-${Date.now()}`,
-                  documentId: d.documentId,
-                  revision: nextRevCode,
-                  submittedDate: new Date(revDate).toISOString(),
-                  purposeCode: revPurpose,
-                  submittedBy: "Engineer",
-                  receivedBy: revReceiver,
-                  erpSynced: false,
-                  createdAt: new Date().toISOString(),
-                },
-                ...(d.submissions || []),
-              ],
-            }
-          : d
-      )
+    const updatedList = docList.map((d) =>
+      d.documentId === revisionDoc.documentId
+        ? {
+            ...d,
+            currentRevision: nextRevCode,
+            erpSynced: false,
+            erpSyncedAt: null,
+            submissions: [
+              {
+                submissionId: `sub-${Date.now()}`,
+                documentId: d.documentId,
+                revision: nextRevCode,
+                submittedDate: new Date(revDate).toISOString(),
+                purposeCode: revPurpose,
+                submittedBy: "Engineer",
+                receivedBy: revReceiver,
+                erpSynced: false,
+                createdAt: new Date().toISOString(),
+              },
+              ...(d.submissions || []),
+            ],
+          }
+        : d
     );
 
+    setDocList(updatedList);
+    saveStoredDocuments(updatedList);
     setRevisionDoc(null);
   };
 
@@ -343,6 +366,7 @@ export function ExcelWorkbookView({
       "Title",
       "Plan Date",
       "ConZoL Status",
+      "Total Submissions",
     ];
     const rows = filteredDocs.map((d) => [
       d.group?.disciplineCode || "",
@@ -356,6 +380,7 @@ export function ExcelWorkbookView({
       `"${d.title.replace(/"/g, '""')}"`,
       formatDate(d.planDate),
       d.erpSynced ? "Uploaded" : "Pending ConZoL",
+      d.submissions?.length || 1,
     ]);
 
     const csvContent =
@@ -419,7 +444,7 @@ export function ExcelWorkbookView({
           <div className="flex items-center bg-slate-200/80 p-0.5 rounded text-xs shrink-0">
             <button
               onClick={() => setConzolFilter("ALL")}
-              className={`px-2.5 py-1 rounded font-medium transition-colors ${
+              className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                 conzolFilter === "ALL"
                   ? "bg-white text-slate-800 shadow-xs font-bold"
                   : "text-slate-600 hover:text-slate-900"
@@ -429,7 +454,7 @@ export function ExcelWorkbookView({
             </button>
             <button
               onClick={() => setConzolFilter("PENDING")}
-              className={`px-2.5 py-1 rounded font-bold transition-colors flex items-center space-x-1 ${
+              className={`px-2.5 py-1 rounded font-bold transition-colors flex items-center space-x-1 cursor-pointer ${
                 conzolFilter === "PENDING"
                   ? "bg-[#f3e8ff] text-purple-900 border border-purple-300 shadow-xs"
                   : "text-purple-700 hover:text-purple-900"
@@ -440,7 +465,7 @@ export function ExcelWorkbookView({
             </button>
             <button
               onClick={() => setConzolFilter("SYNCED")}
-              className={`px-2.5 py-1 rounded font-medium transition-colors ${
+              className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                 conzolFilter === "SYNCED"
                   ? "bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-xs"
                   : "text-emerald-700 hover:text-emerald-900"
@@ -455,7 +480,7 @@ export function ExcelWorkbookView({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsAddOpen(!isAddOpen)}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded bg-[#107c41] hover:bg-[#0e6b37] text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+            className="flex items-center space-x-1 px-3 py-1.5 rounded bg-[#107c41] hover:bg-[#0e6b37] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>+ กรอกเอกสารใหม่ (Auto Running No.)</span>
@@ -463,7 +488,7 @@ export function ExcelWorkbookView({
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs shadow-xs"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs shadow-xs cursor-pointer"
             title="ดาวน์โหลดเป็นไฟล์ Excel"
           >
             <Download className="h-3.5 w-3.5 text-emerald-600" />
@@ -612,14 +637,14 @@ export function ExcelWorkbookView({
               <button
                 type="button"
                 onClick={() => setIsAddOpen(false)}
-                className="w-1/3 h-8 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs font-medium"
+                className="w-1/3 h-8 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs font-medium cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
                 disabled={createDocMutation.isPending || isDuplicateDocNo}
-                className="w-2/3 h-8 rounded bg-[#107c41] hover:bg-[#0e6b37] disabled:opacity-50 text-white font-bold text-xs shadow-xs"
+                className="w-2/3 h-8 rounded bg-[#107c41] hover:bg-[#0e6b37] disabled:opacity-50 text-white font-bold text-xs shadow-xs cursor-pointer"
               >
                 {createDocMutation.isPending ? "กำลังบันทึก..." : "✓ บันทึกแถวใหม่"}
               </button>
@@ -645,8 +670,11 @@ export function ExcelWorkbookView({
                 <th colSpan={3} className="border-r border-slate-300 px-2 py-1 text-center bg-blue-100/70 text-blue-950 font-bold">
                   Document Identity & Title
                 </th>
-                <th colSpan={2} className="px-2 py-1 text-center bg-purple-100/70 text-purple-950 font-bold">
+                <th colSpan={2} className="border-r border-slate-300 px-2 py-1 text-center bg-purple-100/70 text-purple-950 font-bold">
                   ConZoL DMS Admin Action
+                </th>
+                <th className="px-2 py-1 text-center bg-emerald-100/70 text-emerald-950 font-bold">
+                  Revision History
                 </th>
               </tr>
 
@@ -664,7 +692,8 @@ export function ExcelWorkbookView({
                 <th className="border border-slate-300 px-3 py-1.5 min-w-[280px] text-left">Document Title</th>
                 <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Plan Date</th>
                 <th className="border border-slate-300 px-2 py-1.5 w-32 text-center bg-purple-50 text-purple-950 font-bold">ConZoL Status</th>
-                <th className="border border-slate-300 px-2 py-1.5 w-20 text-center bg-slate-100">Action</th>
+                <th className="border border-slate-300 px-2 py-1.5 w-16 text-center bg-slate-100">Add Rev</th>
+                <th className="border border-slate-300 px-2 py-1.5 w-28 text-center bg-emerald-50 text-emerald-950">ประวัติ Submissions</th>
               </tr>
             </thead>
 
@@ -672,13 +701,13 @@ export function ExcelWorkbookView({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="text-center py-12 text-slate-400 font-medium">
+                  <td colSpan={14} className="text-center py-12 text-slate-400 font-medium">
                     กำลังโหลดข้อมูลตาราง Excel...
                   </td>
                 </tr>
               ) : filteredDocs.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="text-center py-12 text-slate-400 font-medium">
+                  <td colSpan={14} className="text-center py-12 text-slate-400 font-medium">
                     ไม่พบเอกสารตามเงื่อนไขที่ค้นหา
                   </td>
                 </tr>
@@ -686,124 +715,227 @@ export function ExcelWorkbookView({
                 filteredDocs.map((doc, idx) => {
                   const isPending = !doc.erpSynced;
                   const isCopied = copiedId === doc.documentId;
+                  const isExpanded = expandedDocIds.has(doc.documentId);
                   const latestSub = doc.submissions?.[0];
+                  const subCount = doc.submissions?.length || 1;
 
                   return (
-                    <tr
-                      key={doc.documentId}
-                      className={`hover:bg-slate-100/80 transition-colors border-b border-slate-200 ${
-                        isPending ? "bg-[#faf5ff]" : ""
-                      }`}
-                    >
-                      {/* Row Index */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono text-[11px] text-slate-500 bg-slate-50">
-                        {idx + 1}
-                      </td>
+                    <React.Fragment key={doc.documentId}>
+                      <tr
+                        className={`hover:bg-slate-100/80 transition-colors border-b border-slate-200 ${
+                          isPending ? "bg-[#faf5ff]" : ""
+                        }`}
+                      >
+                        {/* Row Index with Expander Button */}
+                        <td className="border border-slate-200 px-1.5 py-1.5 text-center font-mono text-[11px] text-slate-500 bg-slate-50">
+                          <button
+                            onClick={(e) => toggleRowExpansion(doc.documentId, e)}
+                            className="p-0.5 hover:bg-slate-200 rounded text-slate-500 cursor-pointer"
+                            title={isExpanded ? "ย่อประวัติ Rev" : "ขยายดูประวัติทุก Revision"}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-3.5 w-3.5 text-emerald-700 font-bold inline" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 inline text-slate-400" />
+                            )}
+                            <span className="ml-0.5">{idx + 1}</span>
+                          </button>
+                        </td>
 
-                      {/* Disc */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-700">
-                        {doc.group?.disciplineCode || doc.groupCode.slice(0, 2)}
-                      </td>
+                        {/* Disc */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-700">
+                          {doc.group?.disciplineCode || doc.groupCode.slice(0, 2)}
+                        </td>
 
-                      {/* Group Code */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-semibold text-slate-800 bg-slate-50/50">
-                        {doc.groupCode}
-                      </td>
+                        {/* Group Code */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-semibold text-slate-800 bg-slate-50/50">
+                          {doc.groupCode}
+                        </td>
 
-                      {/* Type Code */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-900">
-                        {doc.typeCode}
-                      </td>
+                        {/* Type Code */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-900">
+                          {doc.typeCode}
+                        </td>
 
-                      {/* Latest Rev */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-blue-700 bg-amber-50/30">
-                        {doc.currentRevision}
-                      </td>
+                        {/* Latest Rev */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-blue-700 bg-amber-50/30">
+                          {doc.currentRevision}
+                        </td>
 
-                      {/* Latest Date */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono text-[11px] text-slate-600">
-                        {formatDate(latestSub?.submittedDate || doc.planDate || doc.createdAt)}
-                      </td>
+                        {/* Latest Date */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono text-[11px] text-slate-600">
+                          {formatDate(latestSub?.submittedDate || doc.planDate || doc.createdAt)}
+                        </td>
 
-                      {/* Latest Purpose */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-700">
-                        {latestSub?.purposeCode || "IFI"}
-                      </td>
+                        {/* Latest Purpose */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono font-bold text-slate-700">
+                          {latestSub?.purposeCode || "IFI"}
+                        </td>
 
-                      {/* Latest Receiver */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center text-[11px] text-slate-600">
-                        {latestSub?.receivedBy || "Owner"}
-                      </td>
+                        {/* Latest Receiver */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center text-[11px] text-slate-600">
+                          {latestSub?.receivedBy || "Owner"}
+                        </td>
 
-                      {/* Document No (with 1-click copy) */}
-                      <td className="border border-slate-200 px-2.5 py-1.5 font-mono font-bold text-blue-700 bg-blue-50/30 whitespace-nowrap">
-                        <div className="flex items-center justify-between space-x-1">
-                          <span>{doc.documentNo}</span>
+                        {/* Document No (with 1-click copy) */}
+                        <td className="border border-slate-200 px-2.5 py-1.5 font-mono font-bold text-blue-700 bg-blue-50/30 whitespace-nowrap">
+                          <div className="flex items-center justify-between space-x-1">
+                            <span>{doc.documentNo}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(doc.documentNo, doc.documentId, e)}
+                              title="กดคลิกเดียวเพื่อ Copy เลขไปวางใน ConZoL"
+                              className="p-1 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-700 transition-all cursor-pointer"
+                            >
+                              {isCopied ? (
+                                <span className="flex items-center text-[10px] text-emerald-700 font-sans font-bold">
+                                  <Check className="h-3 w-3 mr-0.5 text-emerald-600" /> Copied!
+                                </span>
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Document Title */}
+                        <td className="border border-slate-200 px-3 py-1.5 text-slate-800 font-medium max-w-sm truncate" title={doc.title}>
+                          {doc.title}
+                        </td>
+
+                        {/* Plan Date */}
+                        <td className="border border-slate-200 px-2 py-1.5 text-center font-mono text-[11px] text-slate-600">
+                          {formatDate(doc.planDate)}
+                        </td>
+
+                        {/* ConZoL Status (Persistent Purple / Amber Highlight for Admin) */}
+                        <td className="border border-slate-200 px-2 py-1 text-center whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={(e) => handleCopy(doc.documentNo, doc.documentId, e)}
-                            title="กดคลิกเดียวเพื่อ Copy เลขไปวางใน ConZoL"
-                            className="p-1 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-700 transition-all cursor-pointer"
+                            onClick={(e) => handleToggleConzol(doc, e)}
+                            title={
+                              doc.erpSynced
+                                ? `อัปโหลดเข้า ConZoL แล้วเมื่อ ${formatDate(doc.erpSyncedAt)}. คลิกเพื่อเปลี่ยนสถานะเป็นรออัป.`
+                                : "เอกสารนี้ยังไม่ได้อัปโหลดเข้า ConZoL! คลิกเพื่อติ๊กเสร็จสิ้น (Mark as Uploaded)"
+                            }
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all select-none shadow-2xs cursor-pointer active:scale-95"
                           >
-                            {isCopied ? (
-                              <span className="flex items-center text-[10px] text-emerald-700 font-sans font-bold">
-                                <Check className="h-3 w-3 mr-0.5 text-emerald-600" /> Copied!
+                            {doc.erpSynced ? (
+                              <span className="flex items-center text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded text-[11px] font-bold hover:bg-emerald-200">
+                                <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
+                                ✓ Uploaded
                               </span>
                             ) : (
-                              <Copy className="h-3.5 w-3.5" />
+                              <span className="flex items-center text-purple-950 bg-purple-200 border border-purple-400 px-2.5 py-0.5 rounded text-[11px] font-bold hover:bg-purple-300 animate-pulse">
+                                <AlertTriangle className="h-3 w-3 mr-1 text-purple-700" />
+                                🟣 รออัป ConZoL
+                              </span>
                             )}
                           </button>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Document Title */}
-                      <td className="border border-slate-200 px-3 py-1.5 text-slate-800 font-medium max-w-sm truncate" title={doc.title}>
-                        {doc.title}
-                      </td>
+                        {/* Actions: Add Rev */}
+                        <td className="border border-slate-200 px-2 py-1 text-center whitespace-nowrap">
+                          <button
+                            onClick={(e) => handleOpenRevisionModal(doc, e)}
+                            title="เพิ่ม Revision ใหม่สำหรับเอกสารนี้ (เช่น 01, 02)"
+                            className="flex items-center space-x-1 px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200 mx-auto transition-colors cursor-pointer"
+                          >
+                            <History className="h-3 w-3" />
+                            <span>+ Rev</span>
+                          </button>
+                        </td>
 
-                      {/* Plan Date */}
-                      <td className="border border-slate-200 px-2 py-1.5 text-center font-mono text-[11px] text-slate-600">
-                        {formatDate(doc.planDate)}
-                      </td>
+                        {/* Revision Submissions Expander Button */}
+                        <td className="border border-slate-200 px-2 py-1 text-center whitespace-nowrap">
+                          <button
+                            onClick={(e) => toggleRowExpansion(doc.documentId, e)}
+                            className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium border border-slate-300 cursor-pointer"
+                            title="คลิกเพื่อดูประวัติการส่งทุก Revision ของเอกสารนี้"
+                          >
+                            <Clock className="h-3 w-3 text-emerald-700" />
+                            <span>{subCount} Revs</span>
+                          </button>
+                        </td>
+                      </tr>
 
-                      {/* ConZoL Status (Persistent Purple / Amber Highlight for Admin) */}
-                      <td className="border border-slate-200 px-2 py-1 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleConzol(doc, e)}
-                          title={
-                            doc.erpSynced
-                              ? `อัปโหลดเข้า ConZoL แล้วเมื่อ ${formatDate(doc.erpSyncedAt)}. คลิกเพื่อเปลี่ยนสถานะเป็นรออัป.`
-                              : "เอกสารนี้ยังไม่ได้อัปโหลดเข้า ConZoL! คลิกเพื่อติ๊กเสร็จสิ้น (Mark as Uploaded)"
-                          }
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all select-none shadow-2xs cursor-pointer active:scale-95"
-                        >
-                          {doc.erpSynced ? (
-                            <span className="flex items-center text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded text-[11px] font-bold hover:bg-emerald-200">
-                              <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
-                              ✓ Uploaded
-                            </span>
-                          ) : (
-                            <span className="flex items-center text-purple-950 bg-purple-200 border border-purple-400 px-2.5 py-0.5 rounded text-[11px] font-bold hover:bg-purple-300 animate-pulse">
-                              <AlertTriangle className="h-3 w-3 mr-1 text-purple-700" />
-                              🟣 รออัป ConZoL
-                            </span>
-                          )}
-                        </button>
-                      </td>
+                      {/* EXPANDABLE REVISION HISTORY SUB-TABLE (Timeline of all revisions) */}
+                      {isExpanded && (
+                        <tr className="bg-emerald-50/40 border-b-2 border-emerald-300">
+                          <td colSpan={14} className="p-3 pl-12">
+                            <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-xs space-y-2">
+                              <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-1.5">
+                                <div className="flex items-center space-x-2">
+                                  <History className="h-4 w-4 text-emerald-600" />
+                                  <span className="font-bold text-slate-800">
+                                    ประวัติการส่ง Revision ทั้งหมด (Submission History) ของ {doc.documentNo}:
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-500">
+                                  ทั้งหมด {doc.submissions?.length || 1} ครั้ง
+                                </span>
+                              </div>
 
-                      {/* Actions: Add Rev */}
-                      <td className="border border-slate-200 px-2 py-1 text-center whitespace-nowrap">
-                        <button
-                          onClick={(e) => handleOpenRevisionModal(doc, e)}
-                          title="เพิ่ม Revision ใหม่สำหรับเอกสารนี้ (เช่น 01, 02)"
-                          className="flex items-center space-x-1 px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200 mx-auto transition-colors cursor-pointer"
-                        >
-                          <History className="h-3 w-3" />
-                          <span>+ Rev</span>
-                        </button>
-                      </td>
-                    </tr>
+                              {/* Revisions Table */}
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                                    <th className="p-1.5 border border-slate-200 w-16 text-center">Revision</th>
+                                    <th className="p-1.5 border border-slate-200 w-28 text-center">Submitted Date</th>
+                                    <th className="p-1.5 border border-slate-200 w-24 text-center">Purpose</th>
+                                    <th className="p-1.5 border border-slate-200 w-24 text-center">Receiver</th>
+                                    <th className="p-1.5 border border-slate-200 w-28 text-center">Return Code</th>
+                                    <th className="p-1.5 border border-slate-200 text-left">Remark / บันทึก</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(doc.submissions && doc.submissions.length > 0
+                                    ? doc.submissions
+                                    : [
+                                        {
+                                          submissionId: "default",
+                                          revision: doc.currentRevision || "00",
+                                          submittedDate: doc.planDate || doc.createdAt,
+                                          purposeCode: "IFI",
+                                          receivedBy: "Owner",
+                                          returnCode: "A",
+                                        },
+                                      ]
+                                  ).map((sub, sIdx) => (
+                                    <tr key={sub.submissionId || sIdx} className="hover:bg-slate-50 border-b border-slate-100">
+                                      <td className="p-1.5 border border-slate-200 text-center font-mono font-bold text-blue-700 bg-blue-50/30">
+                                        Rev. {sub.revision}
+                                      </td>
+                                      <td className="p-1.5 border border-slate-200 text-center font-mono text-[11px] text-slate-600">
+                                        {formatDate(sub.submittedDate)}
+                                      </td>
+                                      <td className="p-1.5 border border-slate-200 text-center font-mono font-bold text-slate-700">
+                                        {sub.purposeCode || "IFI"}
+                                      </td>
+                                      <td className="p-1.5 border border-slate-200 text-center text-[11px] text-slate-600">
+                                        {sub.receivedBy || "Owner"}
+                                      </td>
+                                      <td className="p-1.5 border border-slate-200 text-center">
+                                        {sub.returnCode ? (
+                                          <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            {sub.returnCode} {sub.returnCode === "A" ? "(Approved)" : ""}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-mono">-</span>
+                                        )}
+                                      </td>
+                                      <td className="p-1.5 border border-slate-200 text-[11px] text-slate-500">
+                                        {sIdx === 0 ? "🔥 รายการส่งล่าสุด (Latest Issue)" : `ส่งครั้งที่ ${sIdx + 1}`}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })
               )}

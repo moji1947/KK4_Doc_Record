@@ -31,7 +31,13 @@ export async function listTypesByGroup(groupCode?: string) {
     where: { groupCode },
     include: { type: true },
   });
-  return mappings.map((m) => m.type).filter((t) => t.active);
+  const mapped = mappings.map((m) => m.type).filter((t) => t.active);
+  // ยังไม่มี mapping ที่ยืนยันสำหรับ Group นี้ (เช่น Group ที่ยังไม่เคยใช้งานจริง)
+  // ไม่ควรทำให้ dropdown ว่างเปล่าจนสร้างเอกสารไม่ได้ — fallback ไปแสดง Type ทั้งหมดแทน
+  if (mapped.length === 0) {
+    return listTypesByGroup(undefined);
+  }
+  return mapped;
 }
 
 export function listOriginators() {

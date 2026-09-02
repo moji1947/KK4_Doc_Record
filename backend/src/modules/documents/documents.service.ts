@@ -378,8 +378,12 @@ export async function listDocuments(params: ListDocumentsQuery) {
       totalPages: Math.ceil(total / params.pageSize),
     };
   } catch (e) {
-    // Fallback to mock when DB not reachable (e.g. placeholder password before Supabase migration)
-    if (process.env.DATABASE_URL?.includes("[YOUR_DB_PASSWORD]") || (e as Error).message?.includes("Can't reach database")) {
+    // Mock fallback is ONLY for the documented "not configured yet" placeholder case —
+    // a real DB error (wrong password, network, etc.) must throw and surface as a real
+    // error, never be silently replaced with fake data the user has no way to tell apart
+    // from real records. This exact confusion (mock data mistaken for live Supabase data)
+    // is why the broader "any error" fallback was removed — see chat history 2026-09-02.
+    if (process.env.DATABASE_URL?.includes("[YOUR_DB_PASSWORD]")) {
       return filterMockDocuments(params);
     }
     throw e;
