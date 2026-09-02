@@ -26,6 +26,7 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.0.0",
     "@prisma/client": "^5.19.1",
+    "dotenv": "^16.6.1",
     "fastify": "^4.28.1",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2",

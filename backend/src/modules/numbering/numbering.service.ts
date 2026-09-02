@@ -18,14 +18,26 @@ export function buildSequenceKey(params: GenerateDocumentNumberInput): string {
 export async function peekNextDocumentNumber(
   params: GenerateDocumentNumberInput
 ): Promise<string> {
-  const sequenceKey = buildSequenceKey(params);
-  const row = await prisma.documentNumberSequence.findUnique({
-    where: { sequenceKey },
-  });
+  try {
+    const sequenceKey = buildSequenceKey(params);
+    const row = await prisma.documentNumberSequence.findUnique({
+      where: { sequenceKey },
+    });
 
-  const nextSeq = (row?.lastSequence ?? 0) + 1;
-  const sequenceStr = String(nextSeq).padStart(4, "0");
-  return `${params.projectCode}-${params.originatorCode}-${params.groupCode}-${params.typeCode}-${sequenceStr}`;
+    const nextSeq = (row?.lastSequence ?? 0) + 1;
+    const sequenceStr = String(nextSeq).padStart(4, "0");
+    return `${params.projectCode}-${params.originatorCode}-${params.groupCode}-${params.typeCode}-${sequenceStr}`;
+  } catch {
+    // Fallback when DB not reachable — compute from mockDocuments
+    if (process.env.DATABASE_URL?.includes("[YOUR_DB_PASSWORD]")) {
+      const mock = await import("../../shared/mockDocuments.json");
+      const prefix = `${params.projectCode}-${params.originatorCode}-${params.groupCode}-${params.typeCode}-`;
+      const max = (mock.default as any[]).filter(d => d.documentNo.startsWith(prefix)).map(d => parseInt(d.documentNo.slice(-4),10)).reduce((m,n)=>Math.max(m,isNaN(n)?0:n),0);
+      const next = String(max+1).padStart(4,"0");
+      return `${prefix}${next}`;
+    }
+    throw new Error("DB unavailable for peekNextDocumentNumber");
+  }
 }
 
 /**
